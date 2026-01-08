@@ -70,7 +70,7 @@ elif [ \"\$DEVICE\" = \"cuda\" ]; then
     curl -L -o setup_cuda.sh https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/setup_cuda.sh
     chmod +x setup_cuda.sh
     echo \"Executing setup_cuda.sh...\"
-    bash setup_cuda.sh
+    sudo bash setup_cuda.sh
     echo \"✅ setup_cuda.sh executed\"
     
     echo \"Downloading verify_cuda.sh...\"
