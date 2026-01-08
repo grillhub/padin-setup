@@ -37,10 +37,9 @@ sudo chown -R "$TARGET_USER:$TARGET_USER" "$DATA_DIR"
 
 # Get DEVICE from environment (default to cpu if not set)
 DEVICE="${DEVICE:-cpu}"
+echo "Using DEVICE: $DEVICE"
 
-sudo -u "$TARGET_USER" -H \
-DEVICE="$DEVICE" \
-bash -lc "
+sudo -u "$TARGET_USER" -H env DEVICE="$DEVICE" bash -lc "
 if [ ! -d \"$REPO_DIR/.git\" ]; then
     git clone https://github.com/HumanSignal/label-studio-ml-backend.git \"$REPO_DIR\"
 fi
@@ -54,7 +53,6 @@ if [ -f docker-compose.yml ]; then
 fi
 
 # Check DEVICE environment variable and download appropriate docker-compose file
-DEVICE=\"\${DEVICE:-cpu}\"
 echo \"Device type: \$DEVICE\"
 
 if [ \"\$DEVICE\" = \"cpu\" ]; then
@@ -82,10 +80,8 @@ elif [ \"\$DEVICE\" = \"cuda\" ]; then
     bash verify_cuda.sh
     echo \"✅ verify_cuda.sh executed\"
 else
-    echo \"WARNING: Unknown DEVICE value '\$DEVICE'. Defaulting to cpu.\"
-    curl -L -o docker-compose-cpu.yml https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/docker-compose-cpu.yml
-    mv docker-compose-cpu.yml docker-compose.yml
-    echo \"✅ Downloaded and renamed docker-compose-cpu.yml to docker-compose.yml\"
+    echo \"ERROR: Unknown DEVICE value: \$DEVICE. Expected 'cpu' or 'cuda'.\" >&2
+    exit 1
 fi
 
 DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker-compose build
