@@ -375,7 +375,7 @@ API_KEY="$API_KEY" \
 bash -lc '
     cd "$SAM2_DIR"
     docker-compose down
-    grep -q "restart: always" docker-compose.yml || sed -i "/container_name: ml-backend/a\    restart: always" docker-compose.yml
+    # grep -q "restart: always" docker-compose.yml || sed -i "/container_name: ml-backend/a\    restart: always" docker-compose.yml
     sed -i "s|LABEL_STUDIO_URL=.*|LABEL_STUDIO_URL=http://$PUBLIC_IP:8080/|" docker-compose.yml
     sed -i "s|LABEL_STUDIO_API_KEY=.*|LABEL_STUDIO_API_KEY=$API_KEY|" docker-compose.yml
     docker-compose up -d
