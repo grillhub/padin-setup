@@ -8,8 +8,8 @@ import base64
 import hmac
 import hashlib
 
-# EC2 instance ID
-EC2_LITE = os.environ.get('EC2_LITE_ID', '')
+# EC2 instance tag (tag value to search for)
+EC2_INSTANCE_TAG = os.environ.get('EC2_INSTANCE_TAG', '')
 
 # S3 configuration for activity logging
 S3_BUCKET_NAME = os.environ.get('S3_BUCKET_NAME', '')  # Configure this bucket name as needed
@@ -22,6 +22,47 @@ REGION = os.environ.get('COGNITO_REGION', 'us-east-1')
 
 # Initialize Cognito client
 cognito = boto3.client('cognito-idp', region_name=REGION)
+
+def get_instances_by_tag(ec2_client, tag_value):
+    """
+    Find EC2 instances by tag value.
+    Searches for instances with any tag matching the specified value.
+    
+    Args:
+        ec2_client: boto3 EC2 client
+        tag_value (str): Tag value to search for
+        
+    Returns:
+        list: List of instance IDs matching the tag
+    """
+    if not tag_value:
+        return []
+    
+    try:
+        # Search for instances with the specified tag value
+        # This searches across all tag keys for the matching value
+        filters = [
+            {
+                'Name': 'tag-value',
+                'Values': [tag_value]
+            },
+            {
+                'Name': 'instance-state-name',
+                'Values': ['pending', 'running', 'stopping', 'stopped']
+            }
+        ]
+        
+        response = ec2_client.describe_instances(Filters=filters)
+        
+        instance_ids = []
+        for reservation in response['Reservations']:
+            for instance in reservation['Instances']:
+                instance_ids.append(instance['InstanceId'])
+        
+        return instance_ids
+    except ClientError as e:
+        print(f"Error finding instances by tag: {str(e)}")
+        return []
 
 def verify_access_token(access_token):
     """Verify access token using Cognito's GetUser API"""
@@ -474,9 +515,20 @@ def get_ec2_status(body=None):
     ec2_client = boto3.client('ec2')
     
     try:
+        # Find instances by tag
+        instance_ids = get_instances_by_tag(ec2_client, EC2_INSTANCE_TAG)
+        
+        if not instance_ids:
+            return {
+                'statusCode': 404,
+                'body': json.dumps({
+                    'error': f'No EC2 instances found with tag: {EC2_INSTANCE_TAG}'
+                })
+            }
+        
         # Get basic instance information
         response = ec2_client.describe_instances(
-            InstanceIds=[EC2_LITE]
+            InstanceIds=instance_ids
         )
         
         # Get instance status checks (only for running instances)
@@ -543,8 +595,13 @@ def get_ec2_status(body=None):
                 if state == 'running':
                     running_instances.append(instance_id)
                 
-                if instance_id == EC2_LITE:
-                    instances_status['ec2lite'] = instance_info
+                # Add instance to status (using first matching instance or all if multiple)
+                if instance_id in instance_ids:
+                    # Use instance_id as key, or 'ec2lite' for single instance
+                    if len(instance_ids) == 1:
+                        instances_status['ec2lite'] = instance_info
+                    else:
+                        instances_status[instance_id] = instance_info
         
         # Get status checks for running instances
         if running_instances:
@@ -562,6 +619,8 @@ def get_ec2_status(body=None):
                     target_instance = None
                     if instances_status.get('ec2lite', {}).get('instance_id') == instance_id:
                         target_instance = instances_status['ec2lite']
+                    elif instance_id in instances_status:
+                        target_instance = instances_status[instance_id]
                     
                     if target_instance:
                         # Update status check information
@@ -625,9 +684,18 @@ def start_ec2_instances(body):
     
     is_sam2_enable = body.get('is_sam2_enable', True)  # Default to True for backward compatibility
     
-    # Always start the single EC2_LITE instance
-    instance_ids = [EC2_LITE]
-    message = 'EC2 LITE instance start initiated'
+    # Find instances by tag
+    instance_ids = get_instances_by_tag(ec2_client, EC2_INSTANCE_TAG)
+    
+    if not instance_ids:
+        return {
+            'statusCode': 404,
+            'body': json.dumps({
+                'error': f'No EC2 instances found with tag: {EC2_INSTANCE_TAG}'
+            })
+        }
+    
+    message = f'EC2 instance(s) start initiated (tag: {EC2_INSTANCE_TAG})'
 
     try:
         response = ec2_client.start_instances(
@@ -748,9 +816,18 @@ def stop_ec2_instances(body):
     
     is_sam2_enable = body.get('is_sam2_enable', True)  # Default to True for backward compatibility
     
-    # Always stop the single EC2_LITE instance
-    instance_ids = [EC2_LITE]
-    message = 'EC2 LITE instance stop initiated'
+    # Find instances by tag
+    instance_ids = get_instances_by_tag(ec2_client, EC2_INSTANCE_TAG)
+    
+    if not instance_ids:
+        return {
+            'statusCode': 404,
+            'body': json.dumps({
+                'error': f'No EC2 instances found with tag: {EC2_INSTANCE_TAG}'
+            })
+        }
+    
+    message = f'EC2 instance(s) stop initiated (tag: {EC2_INSTANCE_TAG})'
 
     try:
         response = ec2_client.stop_instances(
