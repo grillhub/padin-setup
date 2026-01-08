@@ -339,6 +339,3 @@ bash -lc '
 '
 
 echo "✅ Setup complete."
-
-#------------------ Signal CFN ------------------
-/opt/aws/bin/cfn-signal -e ${!}? --stack ${AWS::StackName} --resource PadinEC2Instance --region ${AWS::Region}
