@@ -36,7 +36,7 @@ mkdir -p "$DATA_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_USER" "$DATA_DIR"
 
 # Get DEVICE from environment (default to cpu if not set)
-DEVICE="${DEVICE:-cpu}"
+DEVICE="${DEVICE:-cuda}"
 echo "Using DEVICE: $DEVICE"
 
 sudo -u "$TARGET_USER" -H env DEVICE="$DEVICE" bash -lc "
