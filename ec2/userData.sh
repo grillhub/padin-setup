@@ -121,7 +121,7 @@ echo "Fetching CSRF cookie ..."
 curl -s -c "$COOK" "$BASE/user/login/" -o login.html
 
 CSRF="$(awk '/csrftoken/ {print $7}' "$COOK" | tail -n1)"
-if [ -z "${!CSRF:-}" ]; then
+if [ -z "$CSRF" ]; then
 echo "ERROR: Failed to capture csrftoken cookie." >&2
 exit 1
 fi
@@ -131,12 +131,12 @@ curl -s -L -b "$COOK" -c "$COOK" \
 -H "Referer: $BASE/" \
 -H "X-CSRFToken: $CSRF" \
 -H "Content-Type: application/x-www-form-urlencoded" \
---data "email=${!EMAIL}&password=${!PASSWORD}&csrfmiddlewaretoken=${!CSRF}" \
+--data "email=$EMAIL&password=$PASSWORD&csrfmiddlewaretoken=$CSRF" \
 "$BASE/user/login/?next=/" -o /dev/null
 
 NEW_CSRF="$(awk '/csrftoken/ {print $7}' "$COOK" | tail -n1)"
 SESSIONID="$(awk '/sessionid/ {print $7}' "$COOK" | tail -n1)"
-if [ -z "${!SESSIONID:-}" ]; then
+if [ -z "$SESSIONID" ]; then
 echo "ERROR: Login failed; no sessionid returned." >&2
 exit 1
 fi
@@ -335,7 +335,7 @@ echo "✅ Wrote project.json"
 AUTH_SCHEME="Token"
 HTTP_CODE=$(curl -s -o project_resp.json -w "%{http_code}" \
 -X POST "$BASE/api/projects/" \
--H "Authorization: ${!AUTH_SCHEME} ${!TOKEN}" \
+-H "Authorization: $AUTH_SCHEME $TOKEN" \
 -H "Content-Type: application/json" \
 --data-binary @project.json)
 
@@ -343,7 +343,7 @@ if [ "$HTTP_CODE" = "401" ]; then
 AUTH_SCHEME="Bearer"
 HTTP_CODE=$(curl -s -o project_resp.json -w "%{http_code}" \
     -X POST "$BASE/api/projects/" \
-    -H "Authorization: ${!AUTH_SCHEME} ${!TOKEN}" \
+    -H "Authorization: $AUTH_SCHEME $TOKEN" \
     -H "Content-Type: application/json" \
     --data-binary @project.json)
 fi
@@ -355,12 +355,12 @@ echo "✅ Project created with id: $PROJECT_ID"
 PUBLIC_IP=$(curl -s http://checkip.amazonaws.com)
 
 cat > ml_payload.json <<JSON
-{"project":${!PROJECT_ID},"title":"SAM2","url":"http://${!PUBLIC_IP}:9090/","auth_method":"NONE","extra_params":"","is_interactive":true}
+{"project":$PROJECT_ID,"title":"SAM2","url":"http://$PUBLIC_IP:9090/","auth_method":"NONE","extra_params":"","is_interactive":true}
 JSON
 
 curl -s -o ml_resp.json -w "%{http_code}" \
 -X POST "$BASE/api/ml" \
--H "Authorization: ${!AUTH_SCHEME} ${!TOKEN}" \
+-H "Authorization: $AUTH_SCHEME $TOKEN" \
 -H "Content-Type: application/json" \
 --data-binary @ml_payload.json
 
