@@ -35,12 +35,59 @@ sudo usermod -a -G docker "$TARGET_USER"
 mkdir -p "$DATA_DIR"
 sudo chown -R "$TARGET_USER:$TARGET_USER" "$DATA_DIR"
 
-sudo -u "$TARGET_USER" -H bash -lc "
+# Get DEVICE from environment (default to cpu if not set)
+DEVICE="${DEVICE:-cpu}"
+
+sudo -u "$TARGET_USER" -H \
+DEVICE="$DEVICE" \
+bash -lc "
 if [ ! -d \"$REPO_DIR/.git\" ]; then
     git clone https://github.com/HumanSignal/label-studio-ml-backend.git \"$REPO_DIR\"
 fi
 
 cd \"$SAM2_DIR\"
+
+# Remove existing docker-compose.yml
+if [ -f docker-compose.yml ]; then
+    rm -f docker-compose.yml
+    echo \"✅ Removed existing docker-compose.yml\"
+fi
+
+# Check DEVICE environment variable and download appropriate docker-compose file
+DEVICE=\"\${DEVICE:-cpu}\"
+echo \"Device type: \$DEVICE\"
+
+if [ \"\$DEVICE\" = \"cpu\" ]; then
+    echo \"Downloading docker-compose-cpu.yml...\"
+    curl -L -o docker-compose-cpu.yml https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/docker-compose-cpu.yml
+    mv docker-compose-cpu.yml docker-compose.yml
+    echo \"✅ Downloaded and renamed docker-compose-cpu.yml to docker-compose.yml\"
+elif [ \"\$DEVICE\" = \"cuda\" ]; then
+    echo \"Downloading docker-compose-gpu.yml...\"
+    curl -L -o docker-compose-gpu.yml https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/docker-compose-gpu.yml
+    mv docker-compose-gpu.yml docker-compose.yml
+    echo \"✅ Downloaded and renamed docker-compose-gpu.yml to docker-compose.yml\"
+    
+    echo \"Downloading setup_cuda.sh...\"
+    curl -L -o setup_cuda.sh https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/setup_cuda.sh
+    chmod +x setup_cuda.sh
+    echo \"Executing setup_cuda.sh...\"
+    bash setup_cuda.sh
+    echo \"✅ setup_cuda.sh executed\"
+    
+    echo \"Downloading verify_cuda.sh...\"
+    curl -L -o verify_cuda.sh https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/verify_cuda.sh
+    chmod +x verify_cuda.sh
+    echo \"Executing verify_cuda.sh...\"
+    bash verify_cuda.sh
+    echo \"✅ verify_cuda.sh executed\"
+else
+    echo \"WARNING: Unknown DEVICE value '\$DEVICE'. Defaulting to cpu.\"
+    curl -L -o docker-compose-cpu.yml https://raw.githubusercontent.com/grillhub/padin-setup/main/segment_anything_2_image/docker-compose-cpu.yml
+    mv docker-compose-cpu.yml docker-compose.yml
+    echo \"✅ Downloaded and renamed docker-compose-cpu.yml to docker-compose.yml\"
+fi
+
 DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 docker-compose build
 COMPOSE_HTTP_TIMEOUT=600 docker-compose up -d
 
