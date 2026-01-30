@@ -10,11 +10,10 @@ This infrastructure enables researchers to start and stop EC2 instances on-deman
 
 ### Key Features
 
-- **On-Demand EC2 Management**: Start and stop EC2 instances via web application
+- **On-Demand EC2 Management/Cost Optimization**: Start and stop EC2 instances via web application when needed for annotation work
 - **Label Studio Integration**: Full-featured annotation interface for dental images
 - **SAM2 Model Integration**: Segment Anything Model 2 for AI-assisted annotation
 - **Flexible Compute Options**: Support for both GPU (CUDA) and CPU configurations
-- **Cost Optimization**: Run instances only when needed for annotation work
 - **Privacy-Preserving**: Infrastructure designed for collaborative research with privacy considerations
 
 ## EC2 Instance Specifications
